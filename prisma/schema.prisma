@@ -4,13 +4,15 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url      = env("DATABASE_URL")
 }
 
 model User {
   id        String   @id @default(uuid())
   name      String
   email     String   @unique
+  password  String   @default("")
+  role      String   @default("user")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   orders    Order[]
@@ -29,6 +31,7 @@ model Product {
   rating             Float
   reviewCount        Int
   availability       String
+  stockCount         Int     @default(10)
   sellerName         String
   imageUrl           String
   productUrl         String
@@ -39,10 +42,16 @@ model Product {
   codAvailable       Boolean
   returnPolicy       String
   deliveryTime       String
-  
+
   orderItems         OrderItem[]
   flashLocks         FlashCheckoutLock[]
   priceHistory       PriceHistory[]
+
+  @@index([category])
+  @@index([availability])
+  @@index([discountedPrice])
+  @@index([rating])
+  @@index([title])
 }
 
 model PriceHistory {
@@ -56,13 +65,14 @@ model PriceHistory {
 }
 
 model Order {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  total     Float
-  status    String   @default("PENDING") // PENDING, COMPLETED, CANCELLED
-  createdAt DateTime @default(now())
-  
+  id            String   @id @default(uuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id])
+  total         Float
+  status        String   @default("PENDING") // PENDING, COMPLETED, CANCELLED
+  reservationId String?  // for idempotency
+  createdAt     DateTime @default(now())
+
   items     OrderItem[]
 }
 

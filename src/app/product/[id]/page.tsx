@@ -1,141 +1,192 @@
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
-import { Star, Shield, Truck, RotateCcw } from 'lucide-react'
-import { ProductCard } from '@/components/ProductCard' // for related products
-import { AddToCartButton } from '@/components/AddToCartButton' // client component wrapper
+import { Star, Shield, Truck, RotateCcw, Package, ShoppingBag } from 'lucide-react'
+import { ProductCard } from '@/components/ProductCard'
+import { AddToCartButton } from '@/components/AddToCartButton'
 import { PriceHistoryChart } from '@/components/PriceHistoryChart'
 
 export default async function ProductPage({ params }: { params: { id: string } }) {
   const { id } = await params
-  
+
   const product = await prisma.product.findUnique({
-    where: { id: id },
-    include: {
-      priceHistory: true
-    }
+    where: { id },
+    include: { priceHistory: true }
   })
 
-  if (!product) {
-    notFound()
-  }
+  if (!product) notFound()
 
-  // Get some related products from the same category
   const relatedProducts = await prisma.product.findMany({
-    where: {
-      category: product.category,
-      id: { not: product.id }
-    },
+    where: { category: product.category, id: { not: product.id } },
     take: 5
   })
 
+  const inStock = product.availability !== 'Out of Stock'
+  const hasDiscount = product.originalPrice > product.discountedPrice
+
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="flex flex-col md:flex-row gap-8 mb-16">
-        
-        {/* Product Image */}
-        <div className="md:w-1/2 lg:w-2/5">
-          <div className="rounded-lg border bg-white p-4 sticky top-24">
-            <img 
-              src={product.imageUrl} 
-              alt={product.title} 
-              className="w-full h-auto object-contain max-h-[500px]" 
-            />
-          </div>
-        </div>
-        
-        {/* Product Info */}
-        <div className="md:w-1/2 lg:w-3/5 flex flex-col">
-          <h1 className="text-2xl md:text-3xl font-medium text-gray-900 mb-2">{product.title}</h1>
-          <div className="text-gray-500 mb-4">{product.brand && `Brand: ${product.brand}`}</div>
-          
-          <div className="flex items-center space-x-2 mb-6">
-            <span className="text-3xl font-bold text-gray-900">₹{product.discountedPrice}</span>
-            {product.originalPrice > product.discountedPrice && (
-              <span className="text-lg text-gray-500 line-through">₹{product.originalPrice}</span>
-            )}
-            {product.discountPercentage > 0 && (
-              <span className="text-green-600 font-bold ml-2">{product.discountPercentage}% off</span>
-            )}
-          </div>
-          
-          <div className="flex items-center space-x-4 mb-6">
-            <div className="flex items-center space-x-1 bg-green-100 px-2 py-1 rounded-md text-green-700 font-medium text-lg">
-              <span>{product.rating}</span>
-              <Star className="h-4 w-4 fill-current" />
-            </div>
-            <span className="text-gray-500">{product.reviewCount} Ratings</span>
-          </div>
+    <div className="bg-background min-h-screen text-foreground pb-32 md:pb-0">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
 
-          <div className="bg-gray-50 rounded-lg p-6 mb-8 border border-gray-100 space-y-4">
-             <div className="flex items-start space-x-3">
-               <Truck className="h-6 w-6 text-pink-600 flex-shrink-0" />
-               <div>
-                 <p className="font-medium">Free Delivery</p>
-                 <p className="text-sm text-gray-500">Expected delivery in {product.deliveryTime}</p>
-               </div>
-             </div>
-             
-             {product.codAvailable && (
-               <div className="flex items-start space-x-3">
-                 <Shield className="h-6 w-6 text-pink-600 flex-shrink-0" />
-                 <div>
-                   <p className="font-medium">Cash on Delivery Available</p>
-                 </div>
-               </div>
-             )}
-             
-             <div className="flex items-start space-x-3">
-               <RotateCcw className="h-6 w-6 text-pink-600 flex-shrink-0" />
-               <div>
-                 <p className="font-medium">{product.returnPolicy}</p>
-               </div>
-             </div>
-          </div>
+        {/* === Two-Column Product Layout === */}
+        <div className="flex flex-col md:flex-row gap-8 md:gap-12">
 
-          <div className="mb-8">
-            <h3 className="text-lg font-bold mb-2">Product Details</h3>
-            <p className="text-gray-700 whitespace-pre-line leading-relaxed">{product.description}</p>
-            
-            <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
-              <div className="bg-white border rounded p-3">
-                <span className="text-gray-500 block mb-1">Sizes Available</span>
-                <span className="font-medium">{product.sizesAvailable}</span>
-              </div>
-              <div className="bg-white border rounded p-3">
-                <span className="text-gray-500 block mb-1">Colors Available</span>
-                <span className="font-medium">{product.colorsAvailable}</span>
-              </div>
-              <div className="bg-white border rounded p-3">
-                <span className="text-gray-500 block mb-1">Material</span>
-                <span className="font-medium">{product.material}</span>
+          {/* LEFT — Image Panel */}
+          <div className="md:w-2/5 lg:w-[42%]">
+            <div className="sticky top-24 rounded-2xl bg-card border border-border overflow-hidden">
+              {product.imageUrl ? (
+                <img
+                  src={product.imageUrl}
+                  alt={product.title}
+                  className="w-full aspect-[3/4] object-cover"
+                />
+              ) : (
+                <div className="w-full aspect-[3/4] flex flex-col items-center justify-center bg-muted text-muted-foreground gap-4">
+                  <ShoppingBag className="h-16 w-16" />
+                  <span className="text-sm">No image available</span>
+                </div>
+              )}
+              {/* Availability badge */}
+              <div className="px-4 py-3 border-t border-border flex items-center justify-between">
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">{product.category}</span>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                  inStock
+                    ? product.availability === 'Limited Stock'
+                      ? 'bg-yellow-400/10 text-yellow-500 dark:text-yellow-400 border border-yellow-400/20'
+                      : 'bg-green-400/10 text-green-600 dark:text-green-400 border border-green-400/20'
+                    : 'bg-red-400/10 text-red-600 dark:text-red-400 border border-red-400/20'
+                }`}>
+                  {product.availability}
+                </span>
               </div>
             </div>
           </div>
 
-          <div className="mt-auto pt-6 border-t flex gap-4 sticky bottom-0 bg-white py-4 z-10">
-             <AddToCartButton product={product} />
+          {/* RIGHT — Info Panel */}
+          <div className="md:w-3/5 lg:w-[58%] flex flex-col gap-6">
+
+            {/* Title + Brand */}
+            <div>
+              <p className="text-sm text-muted-foreground mb-1 uppercase tracking-wider">{product.brand}</p>
+              <h1 className="text-2xl md:text-3xl font-semibold text-foreground leading-snug">{product.title}</h1>
+            </div>
+
+            {/* Price Block */}
+            <div className="flex flex-wrap items-baseline gap-3">
+              <span className="text-4xl font-bold text-foreground">₹{product.discountedPrice}</span>
+              {hasDiscount && (
+                <>
+                  <span className="text-lg text-muted-foreground line-through">₹{product.originalPrice}</span>
+                  <span className="bg-green-500/15 text-green-600 dark:text-green-400 text-sm font-semibold px-2 py-0.5 rounded-full border border-green-500/20">
+                    {product.discountPercentage}% off
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* Rating */}
+            {product.rating > 0 && (
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 bg-green-500/15 border border-green-500/20 px-3 py-1 rounded-full">
+                  <span className="text-sm font-bold text-green-600 dark:text-green-400">{product.rating}</span>
+                  <Star className="h-3.5 w-3.5 fill-green-600 dark:fill-green-400 text-green-600 dark:text-green-400" />
+                </div>
+                <span className="text-sm text-muted-foreground">{product.reviewCount.toLocaleString()} Ratings</span>
+              </div>
+            )}
+
+            {/* Delivery & Service Card */}
+            <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+              <div className="flex items-start gap-3">
+                <Truck className="h-5 w-5 text-pink-500 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Free Delivery</p>
+                  {product.deliveryTime && (
+                    <p className="text-xs text-muted-foreground mt-0.5">Expected in {product.deliveryTime}</p>
+                  )}
+                </div>
+              </div>
+              {product.codAvailable && (
+                <div className="flex items-start gap-3">
+                  <Shield className="h-5 w-5 text-pink-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm font-semibold text-foreground">Cash on Delivery Available</p>
+                </div>
+              )}
+              {product.returnPolicy && (
+                <div className="flex items-start gap-3">
+                  <RotateCcw className="h-5 w-5 text-pink-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm font-semibold text-foreground">{product.returnPolicy}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Product Details */}
+            {product.description && (
+              <div>
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2">Product Details</h2>
+                <p className="text-foreground/80 text-sm leading-relaxed whitespace-pre-line">{product.description}</p>
+              </div>
+            )}
+
+            {/* Attributes Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+              {product.sizesAvailable && (
+                <div className="bg-card border border-border rounded-xl p-3">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider block mb-1">Sizes</span>
+                  <span className="text-foreground font-medium">{product.sizesAvailable}</span>
+                </div>
+              )}
+              {product.colorsAvailable && (
+                <div className="bg-card border border-border rounded-xl p-3">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider block mb-1">Colors</span>
+                  <span className="text-foreground font-medium">{product.colorsAvailable}</span>
+                </div>
+              )}
+              {product.material && (
+                <div className="bg-card border border-border rounded-xl p-3">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider block mb-1">Material</span>
+                  <span className="text-foreground font-medium">{product.material}</span>
+                </div>
+              )}
+              {product.sellerName && (
+                <div className="bg-card border border-border rounded-xl p-3">
+                  <span className="text-xs text-muted-foreground uppercase tracking-wider block mb-1">Seller</span>
+                  <span className="text-foreground font-medium">{product.sellerName}</span>
+                </div>
+              )}
+            </div>
+
+            {/* === Add to Cart — visible inline on desktop === */}
+            <div className="hidden md:block mt-2">
+              <AddToCartButton product={product} />
+            </div>
           </div>
         </div>
+
+        {/* Price History */}
+        {product.priceHistory && product.priceHistory.length > 0 && (
+          <div className="mt-16 max-w-4xl">
+            <PriceHistoryChart history={product.priceHistory} />
+          </div>
+        )}
+
+        {/* Related Products */}
+        {relatedProducts.length > 0 && (
+          <div className="mt-16 pt-8 border-t border-border">
+            <h2 className="text-xl font-semibold text-foreground mb-6">Similar Products</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {relatedProducts.map(p => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-      
-      {/* Price History Section */}
-      {product.priceHistory && product.priceHistory.length > 0 && (
-        <div className="mt-8 mb-16 max-w-4xl">
-          <PriceHistoryChart history={product.priceHistory} />
-        </div>
-      )}
 
-      {/* Related Products */}
-      {relatedProducts.length > 0 && (
-        <div className="mt-16 pt-8 border-t">
-          <h2 className="text-2xl font-bold mb-6">Similar Products</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {relatedProducts.map(p => (
-              <ProductCard key={p.id} product={p} />
-            ))}
-          </div>
-        </div>
-      )}
+      {/* === Mobile Sticky Add-to-Cart Bar === */}
+      {/* Only shown on mobile (md:hidden). Does NOT cover desktop content. */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-background/95 backdrop-blur-md border-t border-border px-4 pt-3 pb-[env(safe-area-inset-bottom,12px)]">
+        <AddToCartButton product={product} />
+      </div>
     </div>
   )
 }

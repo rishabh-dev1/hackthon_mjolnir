@@ -140,7 +140,7 @@ export function PriceHistoryChart({ history }: { history: HistoryPoint[] }) {
             <Tooltip 
               contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
               labelStyle={{ fontWeight: 'bold', color: '#374151', marginBottom: '4px' }}
-              formatter={(value: number) => [`₹${value}`, 'Price']}
+              formatter={(value: any) => [`₹${value}`, 'Price']}
               labelFormatter={(_, payload) => payload[0]?.payload.fullDate}
             />
             <ReferenceLine y={lowestPrice} stroke="#10B981" strokeDasharray="3 3" strokeOpacity={0.5} />
